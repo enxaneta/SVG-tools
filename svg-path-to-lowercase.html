@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="styles.css">
+<title>SVG path to lowercase</title>
+
+</head>
+<body translate="no">
+<h4>SVG path to lowercase</h4>
+<section id="wrap">
+<div class="ta_wrap">
+<textarea id="ta_input">M9.4 10.5l4.77-8.26c-.7-.15-1.42-.24-2.17-.24-2.4 0-4.6.85-6.32 2.25l3.66 6.35.06-.1zm12.14-1.5c-.92-2.92-3.15-5.26-6-6.34l-3.66 6.34h9.66zm.26 1h-7.49l.29.5 4.76 8.25c1.64-1.78 2.64-4.14 2.64-6.75 0-.69-.07-1.35-.2-2zm-13.26 2l-3.9-6.75c-1.63 1.78-2.64 4.14-2.64 6.75 0 .69.07 1.35.2 2h7.49l-1.15-2zm-6.08 3c.92 2.92 3.15 5.26 6 6.34l3.66-6.34h-9.66zm11.27 0l-3.9 6.76c.7.15 1.42.24 2.17.24 2.4 0 4.6-.85 6.32-2.25l-3.66-6.35-.93 1.6z
+  </textarea>
+</div>
+<div class="ta_wrap">
+<textarea id="ta_output"></textarea>
+</div>
+<div class="svg_wrap">
+<svg id="svg_input">
+<path id="path_input" />
+</svg>
+</div>
+<div class="svg_wrap">
+<svg id="svg_output">
+<path id="path_output" />
+</svg>
+</div>
+</section>
+<script src='main.js'></script>
+<script id="rendered-js">
+      let d = ta_input.value;
+
+let all_UC_Arrays = [];
+let all_LC_Arrays = [];
+
+let pathString = "";
+Init(d);
+pathString = "";
+
+ta_input.addEventListener("input", () => {
+  d = ta_input.value;
+  Init(d);
+});
+
+function Init(d) {
+  setViewBox(d);
+
+  //the d attribute of a path with multiples M or m commands
+  let Ry = d
+    .replace(/\r?\n|\r|\t|  +/g, "") //remove breaklines and tabs and spaces
+    .split(/(M)/gi) //split by M or m and remember the separator
+    .filter(Boolean); //remove empty strings
+
+  //an array to save all the subpaths from one m to another
+  let subpaths = [];
+  // in the Ry "M" or "m" are different itens. I'm joining M-s with the paths they belong to
+  for (let i = 0; i < Ry.length; i += 2) {
+    subpaths.push(Ry[i] + Ry[i + 1]);
+  }
+
+  //let All_ucdry_Ry = [];
+
+  for (let i = 0; i < subpaths.length; i++) {
+    let closed = null;
+    //formatedArgsArray takes care of long commands
+    let lc_d_ry = formatedArgsArray(subpaths[i]);
+    // the first subpath allways begin with "M"
+    //if not the first path and the command is "m"
+    if (i > 0 && subpaths[i][0] == "m") {
+      // get the previous item in the subpaths array
+      let lastItem;
+      // if it's a closed path descard the last ["Z"]
+      if (
+        all_UC_Arrays[i - 1][
+          all_UC_Arrays[i - 1].length - 1
+        ][0].toUpperCase() == "Z"
+      ) {
+        lastItem = all_UC_Arrays[i - 1][all_UC_Arrays[i - 1].length - 2];
+      } else {
+        lastItem = all_UC_Arrays[i - 1][all_UC_Arrays[i - 1].length - 1];
+      }
+      //last x & y of the last item used to calculate the value for the M command
+      let last_x = Number(lastItem[lastItem.length - 2]);
+      let last_y = Number(lastItem[lastItem.length - 1]);
+
+      lc_d_ry[0][0] = "M";
+      lc_d_ry[0][1] = last_x + Number(lc_d_ry[0][1]);
+      lc_d_ry[0][2] = last_y + Number(lc_d_ry[0][2]);
+    }
+
+    let ucdry = SVG2UpperCase(lc_d_ry); //upper case d array
+    all_UC_Arrays.push(ucdry);
+
+    let lcdry = SVG2LowerCase(ucdry, i);
+    all_LC_Arrays.push(lcdry);
+
+    pathString += joinRy2d(lcdry);
+  } ///////////////
+
+  path_output.setAttributeNS(null, "d", pathString);
+  ta_output.value = pathString;
+}
+
+function SVG2LowerCase(commands, subpath) {
+  //takes only uppercase commands
+  let _commands = [];
+  for (let i = 0; i < commands.length; i++) {
+    let c = commands[i];
+    let _c = [];
+
+    let prev;
+    // if it's the first subpath
+    if (subpath == 0 && i == 0) {
+      prev = [0, 0];
+    } else if (subpath > 0 && i == 0) {
+      // if i==0 implies a move to (M)
+      let lastItemIndex = all_UC_Arrays[subpath - 1].length - 1;
+      if (all_UC_Arrays[subpath - 1][lastItemIndex][0].toUpperCase() == "Z") {
+        prev = all_UC_Arrays[subpath - 1][lastItemIndex - 1];
+      } else {
+        prev = all_UC_Arrays[subpath - 1][lastItemIndex];
+      }
+    } else {
+      prev = commands[i - 1];
+    }
+
+    let x = Number(prev[prev.length - 2]);
+    let y = Number(prev[prev.length - 1]);
+
+    if (c[0].toLowerCase() !== c[0]) {
+      //if is lower case
+
+      switch (c[0]) {
+        case "V":
+          _c[0] = "l";
+          _c[1] = x; //x
+          _c[2] = Number(c[2]) - y; //y
+          break;
+        case "H":
+          _c[0] = "l";
+          _c[1] = Number(c[1]) - x; //x
+          _c[2] = y; //y
+          break;
+        case "Q":
+        case "S":
+          _c[1] = Number(c[1]) - x; //x
+          _c[2] = Number(c[2]) - y; //y
+          _c[3] = Number(c[3]) - x; //x
+          _c[4] = Number(c[4]) - y; //y
+          break;
+        case "C":
+          _c[1] = Number(c[1]) - x; //x
+          _c[2] = Number(c[2]) - y; //y
+          _c[3] = Number(c[3]) - x; //x
+          _c[4] = Number(c[4]) - y; //y
+          _c[5] = Number(c[5]) - x; //x
+          _c[6] = Number(c[6]) - y; //y
+          break;
+        case "Z":
+          _c[0] = "z";
+          break;
+
+        default:
+          // l, t, m, a
+          _c[c.length - 2] = Number(c[c.length - 2]) - x; //x
+          _c[c.length - 1] = Number(c[c.length - 1]) - y; //y
+      }
+    } // END if is lower case
+
+    _c[0] = c[0].toLowerCase();
+    _commands.push(_c);
+  }
+
+  return _commands;
+}
+</script>
+
+</body>
+</html>
