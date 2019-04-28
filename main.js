@@ -297,3 +297,58 @@ function getReflectedPoint(previous, command) {
 
 ////////////////////////
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function joinRy2d(argsRy) {
+  //Joins the `argsRy` to a `d` attribute.
+  let d = "";
+
+  for (let i = 0; i < argsRy.length; i++) {
+    let arg = argsRy[i];
+    let _str = arg[0]; //the commend
+    for (let j = 1; j < arg.length; j++) {
+      _str += Number(arg[j]);
+      if (j % 2 == 0) {
+        _str += " ";
+      } else {
+        _str += ", ";
+      }
+    }
+
+    d += _str;
+  }
+
+  return d;
+}
+
+
+
+
+
+function setViewBox(d) {
+  path_input.setAttributeNS(null, "d", d);
+  let BB = path_input.getBBox();
+  let vb = `${BB.x - 5} ${BB.y - 5} ${BB.width + 10} ${BB.height + 10}`
+  svg_input.setAttributeNS(
+    null,
+    "viewBox",
+    vb
+  );
+  svg_output.setAttributeNS(
+    null,
+    "viewBox",
+    vb
+  );
+}
