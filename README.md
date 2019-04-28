@@ -1,2 +1,2 @@
 # SVG-tools
-Several SVG tools used to manipulate the path's data
+Several SVG tools used to manipulate the path data
