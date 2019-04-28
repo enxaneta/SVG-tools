@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="styles.css">
+<title>CodePen - Reverse SVG path</title>
+
+</head>
+<body translate="no">
+<h4>SVG reverse path</h4>
+<section id="wrap">
+<div class="ta_wrap">
+<textarea id="ta_input">M16.5 3c-1.74 0-3.41.81-4.5 2.09-1.09-1.28-2.76-2.09-4.5-2.09-3.08 0-5.5 2.42-5.5 5.5 0 3.78 3.4 6.86 8.55 11.54l1.45 1.31 1.45-1.32c5.15-4.67 8.55-7.75 8.55-11.53 0-3.08-2.42-5.5-5.5-5.5zm-4.4 15.55l-.1.1-.1-.1c-4.76-4.31-7.9-7.16-7.9-10.05 0-2 1.5-3.5 3.5-3.5 1.54 0 3.04.99 3.57 2.36h1.87c.52-1.37 2.02-2.36 3.56-2.36 2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05
+  </textarea>
+</div>
+<div class="ta_wrap">
+<textarea id="ta_output"></textarea>
+</div>
+<div class="svg_wrap">
+<svg id="svg_input">
+<path id="path_input" />
+</svg>
+</div>
+<div class="svg_wrap">
+<svg id="svg_output">
+<path id="path_output" />
+</svg>
+</div>
+</section>
+<svg id="defs">
+<defs>
+<marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+<path d="M0,0L4,3L0,6Z" />
+</marker>
+</defs>
+</svg>
+<script src='main.js'></script>
+<script>
+      let d = ta_input.value;
+
+Init(d);
+
+ta_input.addEventListener("input", () => {
+  d = ta_input.value;
+  Init(d);
+});
+
+function Init(d) {
+  setViewBox(d);
+
+  //the d attribute of a path with multiples M or m commands
+  let Ry = d
+    .replace(/\r?\n|\r|\t|  +/g, "") //remove breaklines and tabs and spaces
+    .split(/(M)/gi) //split by M or m and remember the separator
+    .filter(Boolean); //remove empty strings
+
+  //an array to save all the subpaths from one m to another
+  let subpaths = [];
+  // in the Ry "M" or "m" are different itens. I'm joining M-s with the paths they belong to
+  for (let i = 0; i < Ry.length; i += 2) {
+    subpaths.push(Ry[i] + Ry[i + 1]);
+  }
+
+  let allPathsArrays = [];
+  let allReversedPathsArrays = [];
+  let pathString = "";
+
+  for (let i = 0; i < subpaths.length; i++) {
+    let closed = null;
+    //formatedArgsArray takes care of long commands
+    let lc_d_ry = formatedArgsArray(subpaths[i]);
+    // the first subpath allways begin with "M"
+    //if not the first path and the command is "m"
+    if (i > 0 && subpaths[i][0] == "m") {
+      // get the previous item in the subpaths array
+      let lastItem;
+      // if it's a closed path descard the last ["Z"]
+      if (
+        allPathsArrays[i - 1][
+          allPathsArrays[i - 1].length - 1
+        ][0].toUpperCase() == "Z"
+      ) {
+        lastItem = allPathsArrays[i - 1][allPathsArrays[i - 1].length - 2];
+      } else {
+        lastItem = allPathsArrays[i - 1][allPathsArrays[i - 1].length - 1];
+      }
+      //last x & y of the last item used to calculate the value for the M command
+      let last_x = Number(lastItem[lastItem.length - 2]);
+      let last_y = Number(lastItem[lastItem.length - 1]);
+
+      lc_d_ry[0][0] = "M";
+      lc_d_ry[0][1] = last_x + Number(lc_d_ry[0][1]);
+      lc_d_ry[0][2] = last_y + Number(lc_d_ry[0][2]);
+    }
+
+    let ucdry = SVG2UpperCase(lc_d_ry); //upper case d array
+
+    // get the reversed d
+    theReversedD = getReversed_d_ry(ucdry);
+
+    allReversedPathsArrays.unshift(theReversedD);
+
+    allPathsArrays.push(ucdry);
+
+    //pathString += joinRy2d(ucdry);
+  } ////////////////
+
+  path_output.setAttributeNS(null, "d", allReversedPathsArrays.join(""));
+  ta_output.value = allReversedPathsArrays.join("");
+}
+
+// ---------Functions used to reverse the path
+function getReversed_d_ry(the_d_ry) {
+  let commands = S2C_T2Q(the_d_ry);
+  closed = ifClosedPath(commands);
+
+  let newD = "M";
+  let c, lastX, lastY, lastUC;
+
+  for (let i = commands.length - 1; i >= 0; i--) {
+    c = commands[i];
+    lastX = c[c.length - 2];
+    lastY = c[c.length - 1];
+
+    newD += `${lastX},${lastY}`; //M200,55L
+
+    lastUC = c[0];
+    newD += lastUC;
+
+    //console.log(c)
+
+    if (lastUC == "A") {
+      newD += `${c[1]},${c[2]} ${c[3]} ${c[4]} ${Math.abs(c[5] - 1)}`;
+    }
+
+    if (lastUC == "C") {
+      newD += `${c[3]},${c[4]} ${c[1]},${c[2]} `;
+    }
+
+    if (lastUC == "Q") {
+      newD += `${c[1]},${c[2]} `;
+    }
+  }
+  //remove the last M from the newD string
+  if (newD.charAt(newD.length - 1) == "M") {
+    newD = newD.substring(0, newD.length - 1);
+  }
+
+  if (closed) {
+    newD += "Z";
+  }
+
+  return newD;
+}
+
+function S2C_T2Q(commands) {
+  // a function to change S commands to C and T commands to Q
+
+  let newCommands = [];
+  for (let i = 0; i < commands.length; i++) {
+    let command = commands[i];
+    let previous = commands[i - 1];
+
+    if (command[0] == "S") {
+      newCommands.push(S2C(previous, command));
+    } else if (command[0] == "T") {
+      newCommands.push(T2Q(previous, command));
+    } else {
+      newCommands.push(command);
+    }
+  }
+  return newCommands;
+}
+function ifClosedPath(commands) {
+  // if the last command is "Z"
+  if (commands[commands.length - 1][0] == "Z") {
+    // remove the last item from array
+    commands.pop();
+    // copy the first command
+    let lastCommand = commands[0].slice();
+    // change the initial "M" with "L"
+    lastCommand[0] = "L";
+    // add the last command at the end of the commands array
+    commands.push(lastCommand);
+    // it's a closed array?: yes it is
+    return true;
+  } else {
+    return false;
+  }
+}
+//a function to change the T command to a Q command
+function T2Q(previous, command) {
+  let reflected = getReflectedPoint(previous, command);
+  return ["Q", reflected.x, reflected.y, command[1], command[2]];
+}
+//a function to change the S command to a C command
+function S2C(previous, command) {
+  let reflected = getReflectedPoint(previous, command);
+  return [
+    "C",
+    reflected.x,
+    reflected.y,
+    command[1],
+    command[2],
+    command[3],
+    command[4]
+  ];
+}
+// a function to get the reflected point for the T & S commands
+function getReflectedPoint(previous, command) {
+  let x2 = Number(previous[previous.length - 4]); //cp x
+  let y2 = Number(previous[previous.length - 3]); //cp y
+  let x3 = Number(previous[previous.length - 2]); //joining point x
+  let y3 = Number(previous[previous.length - 1]); //joining point y
+
+  ///////////////////////////////////////
+  // the reflected control point
+  let reflected = {};
+  reflected.x = 2 * x3 - x2;
+  reflected.y = 2 * y3 - y2;
+  ///////////////////////////////////////
+
+  return reflected;
+}
+</script>
+
+</body>
+</html>
