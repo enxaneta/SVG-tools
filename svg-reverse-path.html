@@ -4,8 +4,14 @@
 <meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="styles.css">
 <title>CodePen - Reverse SVG path</title>
-  <style>
-  #defs path {
+<style>
+#defs {
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  left: -100em;
+}
+#defs path {
   fill: green;
   stroke: none;
 }
@@ -17,7 +23,7 @@
   marker-end: url(#arrow);
   marker-start: url(#arrow);
 }
-  </style>
+</style>
 </head>
 <body translate="no">
 <h4>SVG reverse path</h4>
