@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="styles.css">
+<title>SVG path to Uppercase***</title>
+</head>
+<body translate="no">
+<h4>SVG path to Uppercase</h4>
+<section id="wrap">
+<div class="ta_wrap">
+<textarea id="ta_input">M4 10v7h3v-7h-3zm6 0v7h3v-7h-3zm-8 12h19v-3h-19v3zm14-12v7h3v-7h-3zm-4.5-9l-9.5 5v2h19v-2l-9.5-5z</textarea>
+</div>
+<div class="ta_wrap">
+<textarea id="ta_output"></textarea>
+</div>
+<div class="svg_wrap">
+<svg id="svg_input">
+<path id="path_input" />
+</svg>
+</div>
+<div class="svg_wrap">
+<svg id="svg_output">
+<path id="path_output" />
+</svg>
+</div>
+</section>
+<script src='main.js'></script>
+<script>
+let d = ta_input.value;
+Init(d);
+
+
+ta_input.addEventListener("input",()=>{
+  d = ta_input.value;
+  Init(d);
+});
+
+function Init(d){
+setViewBox(d);
+  
+//the d attribute of a path with multiples M or m commands
+let Ry = d
+  .replace(/\r?\n|\r|\t|  +/g, "") //remove breaklines and tabs and spaces
+  .split(/(M)/gi) //split by M or m and remember the separator
+  .filter(Boolean); //remove empty strings
+
+//an array to save all the subpaths from one m to another
+let subpaths = [];
+// in the Ry "M" or "m" are different itens. I'm joining M-s with the paths they belong to
+for (let i = 0; i < Ry.length; i += 2) {
+  subpaths.push(Ry[i] + Ry[i + 1]);
+}
+
+let allPathsArrays = [];
+
+let pathString = "";
+
+for (let i = 0; i < subpaths.length; i++) {
+  let closed = null;
+  //formatedArgsArray takes care of long commands
+  let lc_d_ry = formatedArgsArray(subpaths[i]);
+  // the first subpath allways begin with "M"
+  //if not the first path and the command is "m"
+  if (i > 0 && subpaths[i][0] == "m") {
+    // get the previous item in the subpaths array
+    let lastItem;
+    // if it's a closed path descard the last ["Z"]
+    if (
+      allPathsArrays[i - 1][
+        allPathsArrays[i - 1].length - 1
+      ][0].toUpperCase() == "Z"
+    ) {
+      lastItem = allPathsArrays[i - 1][allPathsArrays[i - 1].length - 2];
+    } else {
+      lastItem = allPathsArrays[i - 1][allPathsArrays[i - 1].length - 1];
+    }
+    //last x & y of the last item used to calculate the value for the M command
+    let last_x = Number(lastItem[lastItem.length - 2]); 
+    let last_y = Number(lastItem[lastItem.length - 1]); 
+
+    lc_d_ry[0][0] = "M";
+    lc_d_ry[0][1] = last_x + Number(lc_d_ry[0][1]);
+    lc_d_ry[0][2] = last_y + Number(lc_d_ry[0][2]);
+  }
+  
+  let ucdry = SVG2UpperCase(lc_d_ry); //upper case d array
+
+  allPathsArrays.push(ucdry);
+  pathString += joinRy2d(ucdry);
+}
+
+path_output.setAttributeNS(null, "d", pathString);
+ta_output.value = pathString;
+}
+</script>
+
+</body>
+</html>
